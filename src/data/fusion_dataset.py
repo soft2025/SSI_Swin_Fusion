@@ -1,0 +1,35 @@
+"""PyTorch Dataset for the fusion of CWT images and weighted SSI vectors."""
+from __future__ import annotations
+
+import pandas as pd
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+from PIL import Image
+import torchvision.transforms as T
+
+
+class FusionDataset(Dataset):
+    """Dataset loading pairs of CWT images and weighted SSI vectors."""
+
+    def __init__(self, csv_path: str, split: str = "train", transform=None, label_map=None):
+        self.data = pd.read_csv(csv_path)
+        self.data = self.data[self.data["split"] == split].reset_index(drop=True)
+        self.transform = transform
+
+        if label_map is None:
+            classes = sorted(self.data["label"].unique())
+            self.label_map = {cls: idx for idx, cls in enumerate(classes)}
+        else:
+            self.label_map = label_map
+
+    def __len__(self) -> int:  # type: ignore[override]
+        return len(self.data)
+
+    def __getitem__(self, idx: int):  # type: ignore[override]
+        row = self.data.iloc[idx]
+        image = Image.open(row["image_path"]).convert("RGB")
+        image = self.transform(image) if self.transform else T.ToTensor()(image)
+        ssi_vector = torch.tensor(np.load(row["ssi_path"]), dtype=torch.float32)
+        label = torch.tensor(self.label_map[row["label"]], dtype=torch.long)
+        return image, ssi_vector, label
