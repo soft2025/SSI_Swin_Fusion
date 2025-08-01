@@ -6,7 +6,21 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
-import torchvision.transforms as T
+from torchvision import transforms
+
+# Default transform resizing the image to 224x224 and applying ImageNet
+# normalization. This matches the expectations of the Swin Transformer
+# backbone used in the model.
+default_transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        ),
+    ]
+)
 
 
 class FusionDataset(Dataset):
@@ -33,16 +47,7 @@ class FusionDataset(Dataset):
         self.data = pd.read_csv(csv_path)
         self.data = self.data[self.data["split"] == split].reset_index(drop=True)
         if transform is None:
-            transform = T.Compose(
-                [
-                    T.Resize((224, 224)),
-                    T.ToTensor(),
-                    T.Normalize(
-                        mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225],
-                    ),
-                ]
-            )
+            transform = default_transform
         self.transform = transform
 
         if label_map is None:
