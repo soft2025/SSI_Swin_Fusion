@@ -1,4 +1,5 @@
 """Swin Transformer based fusion model."""
+
 from __future__ import annotations
 
 import torch
@@ -15,7 +16,9 @@ from .cbam import CBAM
 class SSI_SwinFusionNet(nn.Module):
     """Late-fusion network combining Swin Transformer features and SSI vectors."""
 
-    def __init__(self, num_classes: int = 4, ssi_input_dim: int = 64, pretrained: bool = True) -> None:
+    def __init__(
+        self, num_classes: int = 4, ssi_input_dim: int = 64, pretrained: bool = True
+    ) -> None:
         super().__init__()
         if timm is None:
             raise RuntimeError("timm is required to instantiate the Swin backbone")
@@ -47,7 +50,19 @@ class SSI_SwinFusionNet(nn.Module):
         self.num_classes = num_classes
 
     def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
-        x = self.backbone.forward_features(img)  # [B, 768, 7, 7]
+        x = self.backbone.forward_features(img)
+        # ensure tensor is [B, C, H, W] before CBAM
+        if x.dim() == 4:
+            if (
+                x.shape[1] != self.backbone.num_features
+                and x.shape[-1] == self.backbone.num_features
+            ):
+                x = x.permute(0, 3, 1, 2)
+        elif x.dim() == 3:
+            b, num_patches, c = x.shape
+            h = w = int(num_patches**0.5)
+            x = x.transpose(1, 2).view(b, c, h, w)
+
         x = self.cbam(x)
         x = self.pool(x)
         x = torch.flatten(x, 1)  # [B, 768]
