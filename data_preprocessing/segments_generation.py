@@ -1,3 +1,8 @@
+"""Generate 1 s segments from the FST dataset.
+
+Requires the external package :mod:`hawk_data` (see README).
+"""
+
 import argparse
 import os
 import pickle
@@ -33,17 +38,21 @@ def main(data_dir: str, output_dir: str) -> None:
 
 
 def cli() -> None:
-    parser = argparse.ArgumentParser(description="Generate FBG segments and split")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Generate 1 s segments from the FST dataset (requires hawk_data)"
+        )
+    )
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="/content/drive/MyDrive/FST",
+        default="/path/to/FST",
         help="Directory containing the raw FBG dataset",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="/content/drive/MyDrive",
+        default="./",
         help="Directory where the pickle files will be stored",
     )
     args = parser.parse_args()

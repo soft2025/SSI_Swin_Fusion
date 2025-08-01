@@ -1,6 +1,7 @@
 # SSI_Swin_Fusion
 
 
+
 This project performs classification of FBG measurements using a fusion of CWT images and SSI vectors with a Swin Transformer backbone.
 
 ## Dataset preparation
@@ -61,4 +62,5 @@ python -m src.train \
     --device cuda
 ```
 The trained weights are saved to `runs/fusion_model.pt`. The script prints the validation loss and accuracy so it can be used for basic evaluation.
+
 
