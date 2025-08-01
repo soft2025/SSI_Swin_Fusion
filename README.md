@@ -4,6 +4,13 @@
 
 This project performs classification of FBG measurements using a fusion of CWT images and SSI vectors with a Swin Transformer backbone.
 
+## Installation
+
+```bash
+pip install -r requirements.txt
+pip install git+https://github.com/MDCHAMP/hawk-data
+```
+
 ## Dataset preparation
 
 The raw `FST` dataset (not provided here) must first be segmented and split into train/val/test sets. The preprocessing utilities found in `data_preprocessing/` wrap the functions of `src.data` and expose simple CLIs.
