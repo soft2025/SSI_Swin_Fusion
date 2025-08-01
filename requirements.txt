@@ -4,6 +4,6 @@ timm
 numpy
 pandas
 Pillow
-pywt
+PyWavelets
 scikit-image
 git+https://github.com/MDCHAMP/hawk-data
