@@ -32,6 +32,17 @@ class FusionDataset(Dataset):
         self.split = split
         self.data = pd.read_csv(csv_path)
         self.data = self.data[self.data["split"] == split].reset_index(drop=True)
+        if transform is None:
+            transform = T.Compose(
+                [
+                    T.Resize((224, 224)),
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225],
+                    ),
+                ]
+            )
         self.transform = transform
 
         if label_map is None:
@@ -46,7 +57,7 @@ class FusionDataset(Dataset):
     def __getitem__(self, idx: int):  # type: ignore[override]
         row = self.data.iloc[idx]
         image = Image.open(row["image_path"]).convert("RGB")
-        image = self.transform(image) if self.transform else T.ToTensor()(image)
+        image = self.transform(image)
         ssi_vector = torch.tensor(np.load(row["ssi_path"]), dtype=torch.float32)
         label = torch.tensor(self.label_map[row["label"]], dtype=torch.long)
         return image, ssi_vector, label

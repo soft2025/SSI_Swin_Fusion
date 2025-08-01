@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision.transforms as T
 from torch.utils.data import DataLoader
 
 import timm
@@ -73,11 +72,9 @@ def evaluate(model, loader, criterion, device):
 
 def main(args: argparse.Namespace) -> None:
     device = torch.device(args.device)
-    transform = T.Compose([T.Resize((224, 224)), T.ToTensor()])
-
-    train_ds = FusionDataset(args.csv_path, split="train", transform=transform)
+    train_ds = FusionDataset(args.csv_path, split="train")
     val_ds = FusionDataset(
-        args.csv_path, split="val", transform=transform, label_map=train_ds.label_map
+        args.csv_path, split="val", label_map=train_ds.label_map
     )
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size)

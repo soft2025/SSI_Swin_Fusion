@@ -4,7 +4,6 @@ import os
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchvision import transforms
 
 from src.data import FusionDataset
 from src.models import SSI_SwinFusionNet
@@ -20,9 +19,8 @@ def train(
 ) -> None:
     """Simple training loop for :class:`SSI_SwinFusionNet`."""
 
-    transform = transforms.ToTensor()
-    train_ds = FusionDataset(csv_path, split="train", transform=transform)
-    val_ds = FusionDataset(csv_path, split="val", transform=transform, label_map=train_ds.label_map)
+    train_ds = FusionDataset(csv_path, split="train")
+    val_ds = FusionDataset(csv_path, split="val", label_map=train_ds.label_map)
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size)

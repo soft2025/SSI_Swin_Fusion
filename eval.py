@@ -2,7 +2,6 @@ import argparse
 
 import torch
 from torch.utils.data import DataLoader
-from torchvision import transforms
 
 from src.data import FusionDataset
 from src.models import SSI_SwinFusionNet
@@ -16,8 +15,7 @@ def evaluate(
 ) -> float:
     """Evaluate a trained :class:`SSI_SwinFusionNet` on the test split."""
 
-    transform = transforms.ToTensor()
-    dataset = FusionDataset(csv_path, split="test", transform=transform)
+    dataset = FusionDataset(csv_path, split="test")
     loader = DataLoader(dataset, batch_size=batch_size)
 
     model = SSI_SwinFusionNet(num_classes=len(dataset.label_map), ssi_input_dim=dataset[0][1].shape[0])
