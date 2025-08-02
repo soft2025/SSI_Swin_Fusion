@@ -26,11 +26,14 @@ class SSI_SwinFusionNet(nn.Module):
             pretrained=pretrained,
             features_only=True
         )
-        self.num_features = self.backbone.feature_info[-1]["num_chs"]
-
-        # CBAM attention module
+        
+        # Récupère le nombre de canaux de sortie de la dernière feature map
+        self.num_features = self.backbone.feature_info.channels()[-1]
+        
+        # CBAM
         self.cbam = CBAM(self.num_features)
         self.pool = nn.AdaptiveAvgPool2d(1)
+
 
         # MLP for SSI features
         self.ssi_mlp = nn.Sequential(
