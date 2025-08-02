@@ -20,7 +20,7 @@ class SSI_SwinFusionNet(nn.Module):
         if timm is None:
             raise RuntimeError("timm is required to instantiate the Swin backbone")
 
-        # Backbone Swin
+        # Backbone Swin Transformer
         self.backbone = timm.create_model(
             "swin_tiny_patch4_window7_224",
             pretrained=pretrained,
@@ -51,31 +51,34 @@ class SSI_SwinFusionNet(nn.Module):
         )
 
     def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
-        # Extract features
+        print("DEBUG ➤ Input shape:", img.shape)
+        
+        # Passage dans le backbone Swin Transformer
         features = self.backbone(img)
-        x = features[-1]  # [B, H, W, C]
+        x = features[-1]  # [B, 7, 7, 768]
+        print("DEBUG ➤ After Swin features:", x.shape)
 
-        # Permute to [B, C, H, W] if needed
+        # Rearrangement en [B, C, H, W] pour CBAM
         if x.shape[-1] == self.num_features:
-            x = x.permute(0, 3, 1, 2)
+            x = x.permute(0, 3, 1, 2)  # [B, 768, 7, 7]
+        print("DEBUG ➤ After permute:", x.shape)
 
-        # Safety check
-        assert x.shape[1] == self.num_features, \
-            f"CBAM input mismatch: got {x.shape}, expected [B,{self.num_features},H,W]"
-
-        # CBAM + pooling
+        # Passage dans CBAM
         x = self.cbam(x)
-        x = self.pool(x)
-        x = torch.flatten(x, 1)
+        x = self.pool(x).squeeze(-1).squeeze(-1)  # Global pooling -> [B, 768]
+        print("DEBUG ➤ After CBAM+Pool:", x.shape)
 
-        # SSI branch
+        # Partie SSI
         ssi_feat = self.ssi_mlp(ssi)
+        print("DEBUG ➤ SSI features:", ssi_feat.shape)
 
-        # Fusion
-        fused = torch.cat([x, ssi_feat], dim=1)
+        # Fusion des deux
+        feat = torch.cat((x, ssi_feat), dim=1)
+        print("DEBUG ➤ After Fusion:", feat.shape)
 
-        # Classification
-        out = self.classifier(fused)
+        # Classification finale
+        out = self.classifier(feat)
+        print("DEBUG ➤ Output:", out.shape)
         return out
 
 
