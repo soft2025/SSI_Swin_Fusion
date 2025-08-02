@@ -51,23 +51,23 @@ class SSI_SwinFusionNet(nn.Module):
         )
 
     def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
-        # 1. Extract features from Swin Transformer
-        x = self.backbone.forward_features(img)  # [B, H, W, C]
-        x = x.permute(0, 3, 1, 2)  # Convert to [B, C, H, W]
-        assert x.shape[1] == self.num_features, \
-            f"CBAM input mismatch: got {x.shape}, expected [B, {self.num_features}, H, W]"
+    # 1. Extraire la dernière feature map du Swin
+    features = self.backbone(img)  # Liste de 4 features
+    x = features[-1]  # [B, 768, 7, 7]
 
-        # 2. Apply CBAM and Global Pooling
-        x = self.cbam(x)
-        x = self.pool(x).squeeze(-1).squeeze(-1)  # [B, C]
+    # 2. CBAM + Pool
+    x = self.cbam(x)
+    x = self.pool(x).squeeze(-1).squeeze(-1)  # [B, 768]
 
-        # 3. Process SSI vector
-        ssi_feat = self.ssi_mlp(ssi)  # [B, 32]
+    # 3. SSI
+    ssi_feat = self.ssi_mlp(ssi)
 
-        # 4. Concatenate and classify
-        feat = torch.cat((x, ssi_feat), dim=1)  # [B, C+32]
-        out = self.classifier(feat)
-        return out
+    # 4. Fusion
+    feat = torch.cat((x, ssi_feat), dim=1)
+
+    # 5. Classification
+    return self.classifier(feat)
+
 
 
 __all__ = ["SSI_SwinFusionNet"]
