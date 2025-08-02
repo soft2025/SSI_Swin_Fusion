@@ -57,7 +57,11 @@ class SSI_SwinFusionNet(nn.Module):
         # ✅ Étape 2 : Récupérer toutes les features du Swin
         features = self.backbone(img)
         x = features[-1]  # on prend la dernière carte (768 canaux)
-        print("DEBUG ➤ After Swin features:", x.shape)  # Attendu: [B,768,7,7]
+        # ✅ Réorganisation des dimensions
+        if x.shape[-1] == self.num_features:
+            x = x.permute(0, 3, 1, 2)  # devient [B, 768, 7, 7]
+        print("DEBUG ➤ After permute:", x.shape)
+
 
         # ✅ CBAM
         assert x.shape[1] == self.num_features, \
