@@ -50,6 +50,8 @@ class SSI_SwinFusionNet(nn.Module):
         self.num_classes = num_classes
 
     def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
+        # ✅ Étape 1 : Vérifier la forme de l'image en entrée
+        print("DEBUG ➤ Step 1 - Input shape:", img.shape)
         x = self.backbone.forward_features(img)
         # Reshape pour garantir [B,C,H,W]
         if x.dim() == 4:
