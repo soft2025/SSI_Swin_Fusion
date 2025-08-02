@@ -51,22 +51,27 @@ class SSI_SwinFusionNet(nn.Module):
             nn.Linear(256, num_classes),
         )
 
-    def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
-        # 1. Features Swin
-        features = self.backbone(img)  # Liste de 4 features
-        x = features[-1]  # [B, 768, 7, 7]
+def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
+    # 1. Features Swin
+    features = self.backbone(img)  # Liste de features
+    x = features[-1]  # [B, 7, 7, 768] (H, W, C)
 
-        # 2. CBAM + Pool
-        x = self.cbam(x)
-        x = self.pool(x).flatten(1)  # [B, 768]
+    # 🔹 Corriger l'ordre en [B, C, H, W]
+    if x.dim() == 4 and x.shape[1] != self.num_features:
+        x = x.permute(0, 3, 1, 2).contiguous()
 
-        # 3. SSI
-        ssi_feat = self.ssi_mlp(ssi)
+    # 2. CBAM + Pool
+    x = self.cbam(x)
+    x = self.pool(x).flatten(1)  # [B, 768]
 
-        # 4. Fusion
-        feat = torch.cat((x, ssi_feat), dim=1)
+    # 3. SSI
+    ssi_feat = self.ssi_mlp(ssi)
 
-        # 5. Classification
-        return self.classifier(feat)
+    # 4. Fusion
+    feat = torch.cat((x, ssi_feat), dim=1)
+
+    # 5. Classification
+    return self.classifier(feat)
+
 
 __all__ = ["SSI_SwinFusionNet"]
