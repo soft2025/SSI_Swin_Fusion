@@ -11,7 +11,6 @@ except Exception:
 
 from .cbam import CBAM
 
-
 class SSI_SwinFusionNet(nn.Module):
     """Late-fusion network combining Swin Transformer features and SSI vectors."""
 
@@ -27,15 +26,14 @@ class SSI_SwinFusionNet(nn.Module):
             features_only=True
         )
         
-        # Récupère le nombre de canaux de sortie de la dernière feature map
-        self.num_features = self.backbone.feature_info.channels()[-1]
+        # Nombre de canaux de sortie
+        self.num_features = self.backbone.feature_info[-1]['num_chs']
         
         # CBAM
         self.cbam = CBAM(self.num_features)
         self.pool = nn.AdaptiveAvgPool2d(1)
 
-
-        # MLP for SSI features
+        # MLP pour SSI
         self.ssi_mlp = nn.Sequential(
             nn.Linear(ssi_input_dim, 64),
             nn.ReLU(),
@@ -44,7 +42,7 @@ class SSI_SwinFusionNet(nn.Module):
             nn.ReLU(),
         )
 
-        # Fusion and classifier
+        # Fusion et classification
         fusion_dim = self.num_features + 32
         self.classifier = nn.Sequential(
             nn.Linear(fusion_dim, 256),
@@ -54,23 +52,21 @@ class SSI_SwinFusionNet(nn.Module):
         )
 
     def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
-    # 1. Extraire la dernière feature map du Swin
-    features = self.backbone(img)  # Liste de 4 features
-    x = features[-1]  # [B, 768, 7, 7]
+        # 1. Features Swin
+        features = self.backbone(img)  # Liste de 4 features
+        x = features[-1]  # [B, 768, 7, 7]
 
-    # 2. CBAM + Pool
-    x = self.cbam(x)
-    x = self.pool(x).squeeze(-1).squeeze(-1)  # [B, 768]
+        # 2. CBAM + Pool
+        x = self.cbam(x)
+        x = self.pool(x).flatten(1)  # [B, 768]
 
-    # 3. SSI
-    ssi_feat = self.ssi_mlp(ssi)
+        # 3. SSI
+        ssi_feat = self.ssi_mlp(ssi)
 
-    # 4. Fusion
-    feat = torch.cat((x, ssi_feat), dim=1)
+        # 4. Fusion
+        feat = torch.cat((x, ssi_feat), dim=1)
 
-    # 5. Classification
-    return self.classifier(feat)
-
-
+        # 5. Classification
+        return self.classifier(feat)
 
 __all__ = ["SSI_SwinFusionNet"]
