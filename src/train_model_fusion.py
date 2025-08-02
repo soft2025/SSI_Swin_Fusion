@@ -11,7 +11,7 @@ from src.dataset.fusion_dataset import FusionDataset
 # -------------------------------
 # 1. PARAMÈTRES DE BASE
 # -------------------------------
-csv_path = "metadata.csv"   # CSV listant image_path, ssi_path, label, split
+csv_path = "/content/drive/MyDrive/MonProjet_SSI_Swin/dataset_fusion_weighted.csv"   # CSV listant image_path, ssi_path, label, split
 batch_size = 16
 num_epochs = 10
 learning_rate = 1e-4
