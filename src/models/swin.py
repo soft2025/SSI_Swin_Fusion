@@ -51,24 +51,32 @@ class SSI_SwinFusionNet(nn.Module):
 
     def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
         x = self.backbone.forward_features(img)
-        # ensure tensor is [B, C, H, W] before CBAM
+        # Reshape pour garantir [B,C,H,W]
         if x.dim() == 4:
-            if (
-                x.shape[1] != self.backbone.num_features
-                and x.shape[-1] == self.backbone.num_features
-            ):
+            if x.shape[1] != self.backbone.num_features and x.shape[-1] == self.backbone.num_features:
                 x = x.permute(0, 3, 1, 2)
         elif x.dim() == 3:
-            b, num_patches, c = x.shape
-            h = w = int(num_patches**0.5)
-            x = x.transpose(1, 2).view(b, c, h, w)
+            b, n, c = x.shape
+            h = w = int(n**0.5)
+            x = x.transpose(1, 2).reshape(b, c, h, w)
+        else:
+            raise RuntimeError(f"Unexpected Swin output shape: {x.shape}")
 
+        # Vérification avant CBAM
+        assert x.shape[1] == self.backbone.num_features, \
+            f"CBAM input mismatch: got {x.shape}, expected [B, {self.backbone.num_features}, H, W]"
+
+        #  CBAM avant pooling
         x = self.cbam(x)
+
+        #  Pooling ensuite
         x = self.pool(x)
         x = torch.flatten(x, 1)  # [B, 768]
 
+        # SSI MLP
         ssi_feat = self.ssi_mlp(ssi)  # [B, 32]
 
+        # Fusion
         fused = torch.cat([x, ssi_feat], dim=1)  # [B, 800]
         out = self.classifier(fused)  # [B, num_classes]
         return out
