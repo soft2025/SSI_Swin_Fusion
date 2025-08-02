@@ -61,38 +61,51 @@ class SSI_SwinFusionNet(nn.Module):
         img: [B, 3, 224, 224]
         ssi: [B, ssi_input_dim]
         """
+        # Log input shape
+        print(f"Input image shape: {img.shape}")
+
         # ------------------------------
         # 1. Extraction de features Swin
         # ------------------------------
         features = self.backbone(img)  # Liste de features
         x = features[-1]               # [B, H, W, C] ou [B, C, H, W]
+        print(f"Backbone raw output shape: {x.shape}")
 
         # Si format [B, H, W, C] -> permuter
         if x.dim() == 4 and x.shape[1] != self.num_features:
+            print("Detected [B, H, W, C] format, permuting to [B, C, H, W]")
             x = x.permute(0, 3, 1, 2).contiguous()
+            print(f"Permuted feature shape: {x.shape}")
 
         # ------------------------------
         # 2. CBAM + Pooling
         # ------------------------------
         x = self.cbam(x)
         x = self.pool(x).flatten(1)  # [B, num_features]
+        print(f"Image feature shape after CBAM and pooling: {x.shape}")
 
         # ------------------------------
         # 3. SSI vector (reshape si besoin)
         # ------------------------------
-        if ssi.dim() > 2:
-            ssi = ssi.view(ssi.size(0), -1)  # [B, ssi_input_dim]
+        ssi = ssi.view(ssi.size(0), -1)
+        assert ssi.shape[1] == self.ssi_mlp[0].in_features, (
+            f"Expected SSI feature dimension {self.ssi_mlp[0].in_features}, got {ssi.shape[1]}"
+        )
+        print(f"Reshaped SSI shape: {ssi.shape}")
         ssi_feat = self.ssi_mlp(ssi)
 
         # ------------------------------
         # 4. Fusion
         # ------------------------------
         feat = torch.cat((x, ssi_feat), dim=1)
+        print(f"Fused feature shape: {feat.shape}")
 
         # ------------------------------
         # 5. Classification
         # ------------------------------
         out = self.classifier(feat)
+        assert out.shape[1] == 4, f"Expected classifier output features 4, got {out.shape}"
+        print(f"Output shape: {out.shape}")
         return out
 
 
