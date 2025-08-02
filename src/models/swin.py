@@ -53,30 +53,30 @@ class SSI_SwinFusionNet(nn.Module):
     def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
         print("DEBUG ➤ Input shape:", img.shape)
         
-        # Passage dans le backbone Swin Transformer
-        features = self.backbone(img)
-        x = features[-1]  # [B, 7, 7, 768]
+        # 1. Features Swin Transformer
+        x = self.backbone.forward_features(img)  # [B, 7, 7, 768]
         print("DEBUG ➤ After Swin features:", x.shape)
-
-        # Rearrangement en [B, C, H, W] pour CBAM
-        if x.shape[-1] == self.num_features:
-            x = x.permute(0, 3, 1, 2)  # [B, 768, 7, 7]
+    
+        # 2. Rearrangement en [B, C, H, W]
+        x = x.permute(0, 3, 1, 2)  # [B, 768, 7, 7] ✅
         print("DEBUG ➤ After permute:", x.shape)
-
-        # Passage dans CBAM
+        assert x.shape[1] == self.num_features, \
+            f"CBAM input mismatch: got {x.shape}, expected [B, {self.num_features}, H, W]"
+    
+        # 3. CBAM + Pooling
         x = self.cbam(x)
-        x = self.pool(x).squeeze(-1).squeeze(-1)  # Global pooling -> [B, 768]
+        x = self.pool(x).squeeze(-1).squeeze(-1)  # [B, 768]
         print("DEBUG ➤ After CBAM+Pool:", x.shape)
-
-        # Partie SSI
+    
+        # 4. SSI
         ssi_feat = self.ssi_mlp(ssi)
         print("DEBUG ➤ SSI features:", ssi_feat.shape)
-
-        # Fusion des deux
+    
+        # 5. Fusion
         feat = torch.cat((x, ssi_feat), dim=1)
         print("DEBUG ➤ After Fusion:", feat.shape)
-
-        # Classification finale
+    
+        # 6. Classification
         out = self.classifier(feat)
         print("DEBUG ➤ Output:", out.shape)
         return out
