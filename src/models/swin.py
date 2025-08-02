@@ -1,4 +1,4 @@
-"""Swin Transformer based fusion model (version finale corrigée)."""
+"""Swin Transformer based fusion model."""
 
 from __future__ import annotations
 import torch
@@ -6,7 +6,7 @@ from torch import nn
 
 try:
     import timm
-except Exception:  # pragma: no cover - optional dependency
+except Exception:
     timm = None
 
 from .cbam import CBAM
@@ -20,21 +20,19 @@ class SSI_SwinFusionNet(nn.Module):
         if timm is None:
             raise RuntimeError("timm is required to instantiate the Swin backbone")
 
-        # ✅ Récupération des features brutes
+        # Backbone Swin
         self.backbone = timm.create_model(
             "swin_tiny_patch4_window7_224",
             pretrained=pretrained,
             features_only=True
         )
-
-        # Nombre de canaux de la dernière carte de features
         self.num_features = self.backbone.feature_info[-1]["num_chs"]
 
-        # CBAM + pooling
+        # CBAM attention module
         self.cbam = CBAM(self.num_features)
         self.pool = nn.AdaptiveAvgPool2d(1)
 
-        # Branche SSI adaptée à 10 entrées
+        # MLP for SSI features
         self.ssi_mlp = nn.Sequential(
             nn.Linear(ssi_input_dim, 64),
             nn.ReLU(),
@@ -43,7 +41,7 @@ class SSI_SwinFusionNet(nn.Module):
             nn.ReLU(),
         )
 
-        # Fusion + classification finale
+        # Fusion and classifier
         fusion_dim = self.num_features + 32
         self.classifier = nn.Sequential(
             nn.Linear(fusion_dim, 256),
@@ -51,43 +49,33 @@ class SSI_SwinFusionNet(nn.Module):
             nn.Dropout(0.3),
             nn.Linear(256, num_classes),
         )
-        self.num_classes = num_classes
 
     def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
-        # Debug entrée
-        print("DEBUG ➤ Input shape:", img.shape)
-
-        # Extraction des features Swin
+        # Extract features
         features = self.backbone(img)
-        x = features[-1]  # [B, 7, 7, 768] channels_last
+        x = features[-1]  # [B, H, W, C]
 
-        # Réorganisation dimensions en channels_first
+        # Permute to [B, C, H, W] if needed
         if x.shape[-1] == self.num_features:
-            x = x.permute(0, 3, 1, 2)  # [B, 768, 7, 7]
-        print("DEBUG ➤ After permute:", x.shape)
+            x = x.permute(0, 3, 1, 2)
 
-        # Passage dans CBAM
+        # Safety check
         assert x.shape[1] == self.num_features, \
             f"CBAM input mismatch: got {x.shape}, expected [B,{self.num_features},H,W]"
-        x = self.cbam(x)
 
-        # Pooling + flatten
+        # CBAM + pooling
+        x = self.cbam(x)
         x = self.pool(x)
         x = torch.flatten(x, 1)
-        print("DEBUG ➤ After CBAM+Pool:", x.shape)
 
-        # Passage MLP SSI
+        # SSI branch
         ssi_feat = self.ssi_mlp(ssi)
-        print("DEBUG ➤ SSI features:", ssi_feat.shape)
 
         # Fusion
         fused = torch.cat([x, ssi_feat], dim=1)
-        print("DEBUG ➤ After Fusion:", fused.shape)
 
-        # Classification finale
+        # Classification
         out = self.classifier(fused)
-        print("DEBUG ➤ Output:", out.shape)
-
         return out
 
 
