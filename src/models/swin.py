@@ -26,8 +26,7 @@ class SSI_SwinFusionNet(nn.Module):
         self.backbone = timm.create_model(
             "swin_tiny_patch4_window7_224",
             pretrained=pretrained,
-            num_classes=0,
-            global_pool="",
+            features_only=True   # ✅ renvoie les cartes de features
         )
         self.cbam = CBAM(self.backbone.num_features)
         self.pool = nn.AdaptiveAvgPool2d(1)
