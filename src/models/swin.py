@@ -1,4 +1,4 @@
-"""Swin Transformer based fusion model."""
+"""Swin Transformer based fusion model with SSI vector integration."""
 
 from __future__ import annotations
 import torch
@@ -11,8 +11,13 @@ except Exception:
 
 from .cbam import CBAM
 
+
 class SSI_SwinFusionNet(nn.Module):
-    """Late-fusion network combining Swin Transformer features and SSI vectors."""
+    """
+    Late-fusion network combining:
+    - Swin Transformer image features
+    - SSI feature vectors
+    """
 
     def __init__(self, num_classes: int = 4, ssi_input_dim: int = 10, pretrained: bool = True) -> None:
         super().__init__()
@@ -25,11 +30,11 @@ class SSI_SwinFusionNet(nn.Module):
             pretrained=pretrained,
             features_only=True
         )
-        
+
         # Nombre de canaux de sortie
         self.num_features = self.backbone.feature_info[-1]['num_chs']
-        
-        # CBAM
+
+        # CBAM module
         self.cbam = CBAM(self.num_features)
         self.pool = nn.AdaptiveAvgPool2d(1)
 
@@ -51,27 +56,44 @@ class SSI_SwinFusionNet(nn.Module):
             nn.Linear(256, num_classes),
         )
 
-def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
-    # 1. Features Swin
-    features = self.backbone(img)  # Liste de features
-    x = features[-1]  # [B, 7, 7, 768] (H, W, C)
+    def forward(self, img: torch.Tensor, ssi: torch.Tensor) -> torch.Tensor:
+        """
+        img: [B, 3, 224, 224]
+        ssi: [B, ssi_input_dim]
+        """
+        # ------------------------------
+        # 1. Extraction de features Swin
+        # ------------------------------
+        features = self.backbone(img)  # Liste de features
+        x = features[-1]               # [B, H, W, C] ou [B, C, H, W]
 
-    # 🔹 Corriger l'ordre en [B, C, H, W]
-    if x.dim() == 4 and x.shape[1] != self.num_features:
-        x = x.permute(0, 3, 1, 2).contiguous()
+        # Si format [B, H, W, C] -> permuter
+        if x.dim() == 4 and x.shape[1] != self.num_features:
+            x = x.permute(0, 3, 1, 2).contiguous()
 
-    # 2. CBAM + Pool
-    x = self.cbam(x)
-    x = self.pool(x).flatten(1)  # [B, 768]
+        # ------------------------------
+        # 2. CBAM + Pooling
+        # ------------------------------
+        x = self.cbam(x)
+        x = self.pool(x).flatten(1)  # [B, num_features]
 
-    # 3. SSI
-    ssi_feat = self.ssi_mlp(ssi)
+        # ------------------------------
+        # 3. SSI vector (reshape si besoin)
+        # ------------------------------
+        if ssi.dim() > 2:
+            ssi = ssi.view(ssi.size(0), -1)  # [B, ssi_input_dim]
+        ssi_feat = self.ssi_mlp(ssi)
 
-    # 4. Fusion
-    feat = torch.cat((x, ssi_feat), dim=1)
+        # ------------------------------
+        # 4. Fusion
+        # ------------------------------
+        feat = torch.cat((x, ssi_feat), dim=1)
 
-    # 5. Classification
-    return self.classifier(feat)
+        # ------------------------------
+        # 5. Classification
+        # ------------------------------
+        out = self.classifier(feat)
+        return out
 
 
 __all__ = ["SSI_SwinFusionNet"]
