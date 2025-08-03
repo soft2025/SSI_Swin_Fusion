@@ -19,10 +19,13 @@ class SSI_SwinFusionNet(nn.Module):
     - SSI feature vectors
     """
 
-    def __init__(self, num_classes: int = 4, ssi_input_dim: int = 10, pretrained: bool = True) -> None:
+    def __init__(self, num_classes: int = 4, ssi_input_dim: int = 10,
+                 pretrained: bool = True, debug: bool = True) -> None:
         super().__init__()
         if timm is None:
-            raise RuntimeError("timm is required to instantiate the Swin backbone")
+            raise ImportError("The 'timm' library is required for SSI_SwinFusionNet. Install it via 'pip install timm'.")
+
+        self.debug = debug
 
         # Backbone Swin Transformer
         self.backbone = timm.create_model(
@@ -61,51 +64,53 @@ class SSI_SwinFusionNet(nn.Module):
         img: [B, 3, 224, 224]
         ssi: [B, ssi_input_dim]
         """
-        # Log input shape
-        print(f"Input image shape: {img.shape}")
+        if self.debug:
+            print(f"Input image shape: {img.shape}")
 
-        # ------------------------------
         # 1. Extraction de features Swin
-        # ------------------------------
         features = self.backbone(img)  # Liste de features
-        x = features[-1]               # [B, H, W, C] ou [B, C, H, W]
-        print(f"Backbone raw output shape: {x.shape}")
+        x = features[-1]               # [B,H,W,C] ou [B,C,H,W]
+        if self.debug:
+            print(f"Backbone raw output shape: {x.shape}")
 
-        # Si format [B, H, W, C] -> permuter
+        # ✅ Permutation si nécessaire
         if x.dim() == 4 and x.shape[1] != self.num_features:
-            print("Detected [B, H, W, C] format, permuting to [B, C, H, W]")
+            if self.debug:
+                print("Detected [B,H,W,C] format -> permuting to [B,C,H,W]")
             x = x.permute(0, 3, 1, 2).contiguous()
-            print(f"Permuted feature shape: {x.shape}")
+            if self.debug:
+                print(f"Permuted feature shape: {x.shape}")
 
-        # ------------------------------
         # 2. CBAM + Pooling
-        # ------------------------------
         x = self.cbam(x)
-        x = self.pool(x).flatten(1)  # [B, num_features]
-        print(f"Image feature shape after CBAM and pooling: {x.shape}")
+        x = self.pool(x).flatten(1)
+        if self.debug:
+            print(f"Image feature shape after CBAM+pool: {x.shape}")
 
-        # ------------------------------
-        # 3. SSI vector (reshape si besoin)
-        # ------------------------------
+        # 3. SSI
         ssi = ssi.view(ssi.size(0), -1)
-        assert ssi.shape[1] == self.ssi_mlp[0].in_features, (
-            f"Expected SSI feature dimension {self.ssi_mlp[0].in_features}, got {ssi.shape[1]}"
+        expected_dim = self.ssi_mlp[0].in_features
+        assert ssi.shape[1] == expected_dim, (
+            f"Expected SSI feature dimension {expected_dim}, got {ssi.shape[1]}"
         )
-        print(f"Reshaped SSI shape: {ssi.shape}")
+        if self.debug:
+            print(f"Reshaped SSI shape: {ssi.shape}")
         ssi_feat = self.ssi_mlp(ssi)
 
-        # ------------------------------
         # 4. Fusion
-        # ------------------------------
         feat = torch.cat((x, ssi_feat), dim=1)
-        print(f"Fused feature shape: {feat.shape}")
+        if self.debug:
+            print(f"Fused feature shape: {feat.shape}")
 
-        # ------------------------------
         # 5. Classification
-        # ------------------------------
         out = self.classifier(feat)
-        assert out.shape[1] == 4, f"Expected classifier output features 4, got {out.shape}"
-        print(f"Output shape: {out.shape}")
+        expected_out = self.classifier[-1].out_features
+        assert out.shape[1] == expected_out, (
+            f"Expected classifier output features {expected_out}, got {out.shape}"
+        )
+        if self.debug:
+            print(f"Output shape: {out.shape}")
+
         return out
 
 
