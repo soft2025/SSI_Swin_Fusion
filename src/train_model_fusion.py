@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
 
-from src.models.swin import SSI_SwinFusionNet
+from src.models.ssi_swin import SSI_SwinFusionNet
 from src.dataset.fusion_dataset import FusionDataset
 
 # -------------------------------
