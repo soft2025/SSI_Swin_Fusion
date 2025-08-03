@@ -23,7 +23,8 @@ class SSI_SwinFusionNet(nn.Module):
                  pretrained: bool = True, debug: bool = True) -> None:
         super().__init__()
         if timm is None:
-            raise ImportError("The 'timm' library is required for SSI_SwinFusionNet. Install it via 'pip install timm'.")
+            raise ImportError("The 'timm' library is required for SSI_SwinFusionNet. "
+                              "Install it via 'pip install timm'.")
 
         self.debug = debug
 
@@ -65,42 +66,42 @@ class SSI_SwinFusionNet(nn.Module):
         ssi: [B, ssi_input_dim]
         """
         if self.debug:
-            print(f"Input image shape: {img.shape}")
+            print(f"DEBUG ➤ Input image shape: {img.shape}")
 
         # 1. Extraction de features Swin
-        features = self.backbone(img)  # Liste de features
-        x = features[-1]               # [B,H,W,C] ou [B,C,H,W]
+        features = self.backbone(img)
+        x = features[-1]  # [B,H,W,C] ou [B,C,H,W]
         if self.debug:
-            print(f"Backbone raw output shape: {x.shape}")
+            print(f"DEBUG ➤ Backbone raw output shape: {x.shape}")
 
         # ✅ Permutation si nécessaire
         if x.dim() == 4 and x.shape[1] != self.num_features:
             if self.debug:
-                print("Detected [B,H,W,C] format -> permuting to [B,C,H,W]")
+                print("DEBUG ➤ Detected [B,H,W,C] format -> permuting to [B,C,H,W]")
             x = x.permute(0, 3, 1, 2).contiguous()
             if self.debug:
-                print(f"Permuted feature shape: {x.shape}")
+                print(f"DEBUG ➤ Permuted feature shape: {x.shape}")
 
         # 2. CBAM + Pooling
         x = self.cbam(x)
         x = self.pool(x).flatten(1)
         if self.debug:
-            print(f"Image feature shape after CBAM+pool: {x.shape}")
+            print(f"DEBUG ➤ Image feature shape after CBAM+pool: {x.shape}")
 
-        # 3. SSI
+        # 3. SSI vector
         ssi = ssi.view(ssi.size(0), -1)
         expected_dim = self.ssi_mlp[0].in_features
         assert ssi.shape[1] == expected_dim, (
             f"Expected SSI feature dimension {expected_dim}, got {ssi.shape[1]}"
         )
         if self.debug:
-            print(f"Reshaped SSI shape: {ssi.shape}")
+            print(f"DEBUG ➤ Reshaped SSI shape: {ssi.shape}")
         ssi_feat = self.ssi_mlp(ssi)
 
         # 4. Fusion
         feat = torch.cat((x, ssi_feat), dim=1)
         if self.debug:
-            print(f"Fused feature shape: {feat.shape}")
+            print(f"DEBUG ➤ Fused feature shape: {feat.shape}")
 
         # 5. Classification
         out = self.classifier(feat)
@@ -109,7 +110,7 @@ class SSI_SwinFusionNet(nn.Module):
             f"Expected classifier output features {expected_out}, got {out.shape}"
         )
         if self.debug:
-            print(f"Output shape: {out.shape}")
+            print(f"DEBUG ➤ Output shape: {out.shape}")
 
         return out
 
