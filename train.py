@@ -22,8 +22,8 @@ def train(
     train_ds = FusionDataset(csv_path, split="train")
     val_ds = FusionDataset(csv_path, split="val", label_map=train_ds.label_map)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size)
+    ttrain_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, num_workers=4)
 
     model = SSI_SwinFusionNet(num_classes=len(train_ds.label_map), ssi_input_dim=train_ds[0][1].shape[0])
     model.to(device)
