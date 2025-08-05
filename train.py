@@ -62,7 +62,7 @@ def train(
 
             running_loss += loss.item() * imgs.size(0)
 
-            if batch_idx % 20 == 0:
+            #if batch_idx % 20 == 0:
                 #print(f"Batch {batch_idx}/{len(train_loader)} - Loss: {loss.item():.4f}")
 
         # --- Validation ---
