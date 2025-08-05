@@ -20,11 +20,11 @@ def train(
 ) -> None:
     """Training loop for SSI_SwinFusionNet with improvements."""
 
-    print("📂 Chargement du dataset...")
+    print(" Chargement du dataset...")
     train_ds = FusionDataset(csv_path, split="train")
     val_ds = FusionDataset(csv_path, split="val", label_map=train_ds.label_map)
 
-    print(f"✅ Taille train: {len(train_ds)} | Taille val: {len(val_ds)}")
+    print(f" Taille train: {len(train_ds)} | Taille val: {len(val_ds)}")
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(val_ds, batch_size=batch_size, num_workers=4)
@@ -63,7 +63,7 @@ def train(
             running_loss += loss.item() * imgs.size(0)
 
             if batch_idx % 20 == 0:
-                print(f"Batch {batch_idx}/{len(train_loader)} - Loss: {loss.item():.4f}")
+                #print(f"Batch {batch_idx}/{len(train_loader)} - Loss: {loss.item():.4f}")
 
         # --- Validation ---
         val_loss = 0.0
@@ -82,19 +82,19 @@ def train(
 
         epoch_time = time.time() - epoch_start
         print(
-            f"✅ Epoch {epoch + 1}/{epochs} - "
+            f" Epoch {epoch + 1}/{epochs} - "
             f"train_loss: {running_loss / len(train_ds):.4f} "
             f"val_loss: {val_loss / len(val_ds):.4f} "
             f"val_acc: {correct / total:.4f} "
-            f"(⏱️ {epoch_time:.2f} sec)"
+            f"(⏱ {epoch_time:.2f} sec)"
         )
 
     total_time = time.time() - start_time
-    print(f"\n✅ Entraînement terminé en {total_time:.2f} secondes.")
+    print(f"\n Entraînement terminé en {total_time:.2f} secondes.")
 
     os.makedirs(output_dir, exist_ok=True)
     torch.save(model.state_dict(), os.path.join(output_dir, "model.pth"))
-    print("💾 Modèle sauvegardé dans:", output_dir)
+    print(" Modèle sauvegardé dans:", output_dir)
 
 
 def cli() -> None:
