@@ -18,27 +18,23 @@ def train(
     lr: float = 1e-4,
     device: str = "cpu",
 ) -> None:
-    """Training loop for SSI_SwinFusionNet with improvements."""
-
-    print(" Chargement du dataset...")
+    print("Chargement du dataset...")
     train_ds = FusionDataset(csv_path, split="train")
     val_ds = FusionDataset(csv_path, split="val", label_map=train_ds.label_map)
-
-    print(f" Taille train: {len(train_ds)} | Taille val: {len(val_ds)}")
+    print(f"Taille train: {len(train_ds)} | Taille val: {len(val_ds)}")
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(val_ds, batch_size=batch_size, num_workers=4)
 
-    model = SSI_SwinFusionNet(num_classes=len(train_ds.label_map),
-                              ssi_input_dim=train_ds[0][1].shape[0],
-                              pretrained=True,
-                              debug=False)
-    model.to(device)
+    model = SSI_SwinFusionNet(
+        num_classes=len(train_ds.label_map),
+        ssi_input_dim=train_ds[0][1].shape[0],
+        pretrained=True,
+        debug=False
+    ).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
-
-    # Utilisation de AMP pour accélérer l'entraînement
     scaler = torch.cuda.amp.GradScaler()
 
     start_time = time.time()
@@ -48,7 +44,7 @@ def train(
         running_loss = 0.0
         epoch_start = time.time()
 
-        for batch_idx, (imgs, ssis, labels) in enumerate(train_loader, start=1):
+        for imgs, ssis, labels in train_loader:
             imgs, ssis, labels = imgs.to(device), ssis.to(device), labels.to(device)
             optimizer.zero_grad()
 
@@ -59,13 +55,9 @@ def train(
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
-
             running_loss += loss.item() * imgs.size(0)
 
-            #if batch_idx % 20 == 0:
-                #print(f"Batch {batch_idx}/{len(train_loader)} - Loss: {loss.item():.4f}")
-
-        # --- Validation ---
+        # === Validation ===
         val_loss = 0.0
         correct = 0
         total = 0
@@ -82,7 +74,7 @@ def train(
 
         epoch_time = time.time() - epoch_start
         print(
-            f" Epoch {epoch + 1}/{epochs} - "
+            f"Epoch {epoch + 1}/{epochs} - "
             f"train_loss: {running_loss / len(train_ds):.4f} "
             f"val_loss: {val_loss / len(val_ds):.4f} "
             f"val_acc: {correct / total:.4f} "
@@ -91,7 +83,6 @@ def train(
 
     total_time = time.time() - start_time
     print(f"\n Entraînement terminé en {total_time:.2f} secondes.")
-
     os.makedirs(output_dir, exist_ok=True)
     torch.save(model.state_dict(), os.path.join(output_dir, "model.pth"))
     print(" Modèle sauvegardé dans:", output_dir)
